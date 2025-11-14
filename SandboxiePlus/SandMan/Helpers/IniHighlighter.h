@@ -44,13 +44,19 @@ public:
 	};
 
 	void loadSettingsIni(const QString& filePath);
+	void applyUserIniOverrides(const QString& masterVersion, const QString& userIniPath);
 	void setCurrentVersion(const QString& version);
 
+	static QString BuildPopupTooltip(const QString& settingName, bool basic);
+	static QString BuildTooltipCore(const QString& settingName, bool includeMappings, bool includeContent, int reserveSize = 2048, bool preferDescriptionFirst = true);
+	static QString GetBasicSettingTooltip(const QString& settingName);
 	static QString GetSettingTooltip(const QString& settingName);
+	static QString GetSettingTooltipForPopup(const QString& settingName);
 	static bool IsSettingsLoaded() { return settingsLoaded; }
 	static bool IsCommentLine(const QString& line);
 
 	static void ClearLanguageCache();
+	static void ClearHideConfCache();
 	static void ClearThemeCache();
 	static void SetTooltipMode(int checkState);
 	static TooltipMode GetTooltipMode();
@@ -67,6 +73,17 @@ public:
 	static QMutex hideConfMutex;
 
 	static bool IsKeyHiddenFromContext(const QString& keyName, char context);
+	static bool IsValidTooltipContext(const QString& hoveredText);
+
+	static int getMaxSettingNameLengthOrDefault();
+	static int getMinSettingNameLengthOrDefault();
+
+	static void MarkSettingsDirty();
+	static void MarkUserSettingsDirty();
+
+	static QString s_tooltipBgColorDark, s_tooltipBgColorLight;
+	static QString s_tooltipTextColorDark, s_tooltipTextColorLight;
+
     // End Settings validation, tooltip handling and auto completion
 
 protected:
@@ -113,8 +130,12 @@ private:
 	static QMutex s_languageMutex;
 	static QHash<QString, SettingInfo> validSettings;
 	static QDateTime lastFileModified;
+	static QDateTime lastUserFileModified;
 	static bool settingsLoaded;
+	static bool userIniLoaded;
 	static QMutex settingsMutex;
+	static QMutex userSettingsMutex;
+	static QString s_masterVersion;
 	static QHash<QString, QString> tooltipCache;
 	static QMutex tooltipCacheMutex;
 	static TooltipMode s_tooltipMode;
@@ -123,7 +144,6 @@ private:
 	static QVersionNumber getCurrentVersion();
 	static QString normalizeLanguage(const QString& language);
 	static QString sanitizeHtmlInput(const QString& input);
-	static QString GetBasicSettingTooltip(const QString& settingName);
 	static bool isValidForTooltip(const QString& settingName);
 	
 	static QString sanitizeVersion(const QString& versionString, bool useDefaultOnInvalid = false);
@@ -168,6 +188,7 @@ private:
 		bool bold = false;
 		bool italic = false;
 		bool underline = false;
+		QString alignment;           // "left", "center", "right", or empty
 
 		QString toHtmlStyle() const;
 	};
@@ -252,5 +273,16 @@ private:
 	static void parseHideConfRules(const QString& value, QHash<QString, QString>& rules);
 	static bool matchesWildcard(const QString& pattern, const QString& text);
 	static QString convertWildcardToRegex(const QString& wildcard);
+
+	static int s_maxSettingNameLength;
+	static bool s_maxSettingNameLengthValid;
+	static int s_minSettingNameLength;
+	static bool s_minSettingNameLengthValid;
+
+	void reloadSettingsIniIfNeeded(const QString& userIniPath, const QFileInfo& userFileInfo);
+	void reloadUserIniIfNeeded(const QString& userIniPath, const QFileInfo& userFileInfo);
+
+	static bool settingsDirty;
+	static bool userSettingsDirty;
 	// End Settings validation, tooltip handling and auto completion
 };

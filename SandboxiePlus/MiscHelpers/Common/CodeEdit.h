@@ -13,7 +13,7 @@ class MISCHELPERS_EXPORT CCodeEdit : public QWidget
 public:
 	CCodeEdit(QSyntaxHighlighter* pHighlighter = NULL, QWidget* pParent = NULL);
 
-	static constexpr int AUTO_COMPLETE_MIN_LENGTH = 3;  // Minimum chars to trigger autocompletion
+	static constexpr int AUTO_COMPLETE_MIN_LENGTH = 2;  // Minimum chars to trigger autocompletion
 
 	// Autocompletion mode enumeration
 	enum class AutoCompletionMode {
@@ -35,12 +35,40 @@ public:
 	void SetCaseCorrectionCallback(std::function<QString(const QString&)> callback);
 	void SetCompletionFilterCallback(std::function<bool(const QString&)> callback);
 	void SetCaseCorrectionFilterCallback(std::function<bool(const QString&)> callback);
+	void SetPopupTooltipCallback(std::function<QString(const QString&)> tooltipCallback);
 
 	// Static autocompletion mode control (similar to tooltip mode)
 	static void SetAutoCompletionMode(int checkState);
 	static AutoCompletionMode GetAutoCompletionMode();
 	
+	// Fuzzy matching control (OptionsWindow / SettingsWindow will call these)
+	static void SetFuzzyMatchingEnabled(bool bEnabled);
+	static bool GetFuzzyMatchingEnabled();
+	// Dynamic control for fuzzy prefix length (defaults)
+	static void SetMaxFuzzyPrefixLength(int length);
+	static int GetMaxFuzzyPrefixLength();
+	static void SetMinFuzzyPrefixLength(int length);
+	static int GetMinFuzzyPrefixLength();
+	static int s_maxFuzzyPrefixLength;
+	static int s_minFuzzyPrefixLength;
+	static void ClearFuzzyCache();
+
+	// Fuzzy cache logging control
+	static void SetFuzzyCacheLoggingEnabled(bool bEnabled);
+	static bool GetFuzzyCacheLoggingEnabled();
+	static bool s_fuzzyCacheLoggingEnabled;
+
+	// Token cache logging control
+	static void SetTokenCacheLoggingEnabled(bool bEnabled);
+	static bool GetTokenCacheLoggingEnabled();
+	static bool s_tokenCacheLoggingEnabled;
+
 	void ScheduleWithDelay(int delayMs, std::function<void()> task, const QString& taskName);
+
+	static int s_popupTooltipsMode;
+	static void SetPopupTooltipsEnabled(int checkState);
+	static int GetPopupTooltipsEnabled();
+	void ShowPopupTooltipForCurrentItem();
 
 signals:
 	void textChanged();
@@ -77,6 +105,7 @@ protected:
 	WordBoundaries FindWordBoundaries(const QString& text, int position) const;
 	QString ExtractWordAtCursor(const CursorContext& context) const;
 	bool IsInKeyPosition(const CursorContext& context) const;
+	bool IsWordAtLineStart(const CursorContext& context) const;
 	QString GetCompletionWord() const;
 	void TriggerCompletion(const QString& prefix, int minimumLength = 3);
 	void HandleCaseCorrection(const QString& word, bool wasPopupVisible);
@@ -109,6 +138,10 @@ private:
 	QTextEdit* m_pSourceCode;
 	QCompleter* m_pCompleter;
 
+	// Track the base model (visible candidates) and temporary fuzzy model when fuzzy is active
+	QStringListModel* m_baseModel = nullptr;
+	QStringListModel* m_tempFuzzyModel = nullptr;
+
 	// Find/Replace actions
 	QAction*			m_pFind;
 	QAction*			m_pFindNext;
@@ -138,17 +171,32 @@ private:
 	std::function<bool(const QString&)> m_completionFilterCallback;
 	std::function<bool(const QString&)> m_caseCorrectionFilterCallback;
 	bool ShouldHideKeyFromCompletion(const QString& keyName) const;
+
+	std::function<QString(const QString&)> m_tooltipCallback;
 	
 	// Static autocompletion mode (similar to tooltip mode)
 	static AutoCompletionMode s_autoCompletionMode;
 	static QMutex s_autoCompletionModeMutex;
+
+	// Fuzzy matching toggle
+	static bool s_fuzzyMatchingEnabled;
 	
 	// Helper methods for common operations
-	void ResetFlagAfterDelay(bool& flag, int delayMs = 100);
+	void ResetFlagAfterDelay(bool& flag, int delayMs = 100, const QString& flagName = "unnamed");
+
 	void HidePopupSafely();
 	void ClearCaseCorrectionTracking();
 	void UpdateCaseCorrectionTracking(const QString& wrongWord, const QString& correctWord, int wordStart, int wordEnd);
 	bool IsKeyAvailableInCompletionModel(const QString& key) const;
+	void ConsolidateEqualsSignsAfterCursor(QTextCursor& cursor, bool moveCursorPastEquals = true);
+
+	// Fuzzy-specific helpers (private)
+	QStringList ApplyFuzzyModelForPrefix(const QString& prefix);
+	void RestoreBaseCompletionModel();
+	bool IsKeyAvailableConsideringFuzzy(const QString& key, const QString& wordForFuzzy) const;
+	void ResetPopupScrollState();
+	void ShowCompletionPopup(bool resetScroll = true);
+
 	bool IsExistingKeyValueLine(const QString& lineText, int cursorPosition, int& equalsPosition) const;
 	QString GetTextReplacement(const QString& originalWord, const QString& replacement, 
 							  const QString& lineText, int wordPosition, bool addEquals) const;
@@ -164,6 +212,9 @@ private:
 
 	bool m_suppressNextAutoCompletion = false;
 
+	int m_lastKeyPressed = 0;
+
 	private slots:
 		void OnCursorPositionChanged();
+		void OnPopupSelectionChanged(const QModelIndex& current, const QModelIndex& previous);
 };

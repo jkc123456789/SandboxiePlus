@@ -1093,11 +1093,12 @@ _FX NTSTATUS Api_CopyStringFromUser(
 	if (uni) {
 		ProbeForRead(uni, sizeof(UNICODE_STRING64), sizeof(ULONG_PTR));
 		*len = uni->Length + sizeof(WCHAR);
-        ProbeForRead((WCHAR*)uni->Buffer, *len, sizeof(WCHAR));
+		WCHAR* buff = (WCHAR*)uni->Buffer;
+        ProbeForRead(buff, *len, sizeof(WCHAR));
 		*str = (WCHAR*)Mem_Alloc(Driver_Pool, *len);
         if(!*str)
 			return STATUS_INSUFFICIENT_RESOURCES;
-		memcpy(*str, (WCHAR*)uni->Buffer, *len);
+		memcpy(*str, buff, *len);
 		(*str)[*len / sizeof(WCHAR)] = L'\0';
 	} 
     return STATUS_SUCCESS;
@@ -1245,10 +1246,14 @@ _FX NTSTATUS Api_QueryDriverInfo(PROCESS* proc, ULONG64* parms)
 
             if (args->info_len.val >= sizeof(ULONGLONG)) {
                 ULONGLONG* data = args->info_data.val;
+                ProbeForWrite(data, args->info_len.val, sizeof(ULONGLONG));
+
                 *data = Verify_CertInfo.State;
             }
             else if (args->info_len.val == sizeof(ULONG)) {
                 ULONG* data = args->info_data.val;
+                ProbeForWrite(data, args->info_len.val, sizeof(ULONG));
+
                 *data = (ULONG)(Verify_CertInfo.State & 0xFFFFFFFF); // drop optional data
             }
             else
@@ -1258,6 +1263,8 @@ _FX NTSTATUS Api_QueryDriverInfo(PROCESS* proc, ULONG64* parms)
 
             if (args->info_len.val >= 37 * sizeof(wchar_t)) {
                 wchar_t* hwid = args->info_data.val;
+                ProbeForWrite(hwid, args->info_len.val, sizeof(wchar_t));
+
                 extern wchar_t g_uuid_str[40];
                 wmemcpy(hwid, g_uuid_str, 37);
             }
@@ -1391,7 +1398,6 @@ _FX NTSTATUS Api_GetSecureParam(PROCESS* proc, ULONG64* parms)
 {
     NTSTATUS status = STATUS_SUCCESS;
     API_SECURE_PARAM_ARGS *args = (API_SECURE_PARAM_ARGS *)parms;
-	HANDLE handle = NULL;
     WCHAR* name = NULL;
     SIZE_T  name_len = 0;
     PVOID  data_ptr = NULL;
@@ -1435,9 +1441,6 @@ _FX NTSTATUS Api_GetSecureParam(PROCESS* proc, ULONG64* parms)
 
     if (name)
         Mem_Free(name, (ULONG)name_len);
-
-    if(handle)
-        ZwClose(handle);
 
 finish:
     return status;
