@@ -1357,6 +1357,7 @@ _FX NTSTATUS Key_NtCreateKeyImpl(
     ULONG mp_flags;
     BOOLEAN CopyPathCreated;
     BOOLEAN TruePathExists;
+    ACCESS_MASK ResultWow64Flags;
     PSECURITY_DESCRIPTOR *OverrideSecurityDescriptor;
     ULONG TruePathFlags;
     WCHAR* OriginalPath;
@@ -1399,8 +1400,15 @@ _FX NTSTATUS Key_NtCreateKeyImpl(
 
     CopyPathCreated = FALSE;
     TruePathExists = FALSE;
+    ResultWow64Flags = DesiredAccess & (KEY_WOW64_32KEY | KEY_WOW64_64KEY);
     OriginalPath = NULL;
     TrueOpened = FALSE;
+
+    if (Dll_IsWin64 && ObjectAttributes && ObjectAttributes->RootDirectory && !ResultWow64Flags) {
+        ResultWow64Flags = Handle_GetKeyWow64Flags(ObjectAttributes->RootDirectory);
+        if (ResultWow64Flags)
+            DesiredAccess |= ResultWow64Flags;
+    }
 
     TlsData->key_NtCreateKey_lock = TRUE;
 
@@ -1935,7 +1943,7 @@ SkipReadOnlyCheck:
     //
 
     if (CopyPathCreated)
-        Key_DiscardMergeByPath(TruePath, TRUE);
+        Key_UpdateMergeByPath(TruePath, FALSE, TRUE);
 
     //
     // Relocation, if we opened a relocated location we need to 
@@ -1945,6 +1953,10 @@ SkipReadOnlyCheck:
     if (TrueOpened && OriginalPath) {
 
         Handle_SetRelocationPath(*KeyHandle, OriginalPath);
+    }
+
+    if (NT_SUCCESS(status) && KeyHandle && *KeyHandle && ResultWow64Flags) {
+        Handle_SetKeyWow64Flags(*KeyHandle, ResultWow64Flags);
     }
 
 #undef __sys_NtCreateKeyX
@@ -2559,7 +2571,7 @@ _FX NTSTATUS Key_MarkDeletedAndClose(HANDLE KeyHandle)
         if (NT_SUCCESS(status)) {
             Key_MarkDeletedEx_v2(TruePath, NULL);
 
-            Key_DiscardMergeByPath(TruePath, TRUE);
+            Key_UpdateMergeByPath(TruePath, TRUE, FALSE);
         }
 
         __sys_NtDeleteKey(KeyHandle);
@@ -2579,7 +2591,7 @@ _FX NTSTATUS Key_MarkDeletedAndClose(HANDLE KeyHandle)
         // refresh all merges
         //
 
-        Key_DiscardMergeByHandle(TlsData, KeyHandle, TRUE);
+        Key_UpdateMergeByHandle(TlsData, KeyHandle, TRUE);
     }
 
     //
@@ -2711,7 +2723,7 @@ _FX NTSTATUS Key_NtDeleteValueKey(
 
             Key_MarkDeletedEx_v2(TruePath, ValueName->Buffer);
 
-            __sys_NtDeleteValueKey(KeyHandle, ValueName);
+            status = __sys_NtDeleteValueKey(KeyHandle, ValueName);
 
         } else {
 
@@ -2831,7 +2843,7 @@ _FX NTSTATUS Key_NtSetValueKey(
     // refresh all merges
     //
 
-    Key_DiscardMergeByHandle(TlsData, KeyHandle, FALSE);
+    Key_UpdateMergeByHandle(TlsData, KeyHandle, FALSE);
 
     SetLastError(LastError);
 
@@ -4655,9 +4667,8 @@ _FX NTSTATUS Key_NtRenameKey(
         Key_SetRelocation(TruePath, NewTruePath);
     }
 
-    //*TruePathSlash = L'\0';
-    //Key_DiscardMergeByPath(TruePath, TRUE); // fix-me: act on Key_MergeCacheList
-    //*TruePathSlash = L'\\';
+    Key_UpdateMergeByPath(TruePath, TRUE, FALSE);
+    Key_UpdateMergeByPath(NewTruePath, FALSE, TRUE);
 
     status = STATUS_SUCCESS;
 

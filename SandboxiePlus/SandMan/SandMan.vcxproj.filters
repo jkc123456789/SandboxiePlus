@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -213,6 +213,9 @@
     <ClCompile Include="AddonManager.cpp">
       <Filter>SandMan</Filter>
     </ClCompile>
+    <ClCompile Include="BoxTransfer.cpp">
+      <Filter>SandMan</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\SandboxieTools\Common\verify.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -228,12 +231,16 @@
     <ClCompile Include="Windows\ExtractDialog.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
+    <ClCompile Include="Windows\RenameSandboxDialog.cpp">
+      <Filter>Windows</Filter>
+    </ClCompile>
     <ClCompile Include="Helpers\TabOrder.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="Views\TraceView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+
     <ClCompile Include="Windows\OptionsWindow.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
@@ -331,6 +338,7 @@
     <QtMoc Include="Views\TraceView.h">
       <Filter>Views</Filter>
     </QtMoc>
+
     <QtMoc Include="Windows\SelectBoxWindow.h">
       <Filter>Windows</Filter>
     </QtMoc>
@@ -397,6 +405,9 @@
     <QtMoc Include="AddonManager.h">
       <Filter>SandMan</Filter>
     </QtMoc>
+    <QtMoc Include="BoxTransfer.h">
+      <Filter>SandMan</Filter>
+    </QtMoc>
     <QtMoc Include="Engine\ScriptManager.h">
       <Filter>Engine</Filter>
     </QtMoc>
@@ -407,6 +418,9 @@
       <Filter>Windows</Filter>
     </QtMoc>
     <QtMoc Include="Windows\ExtractDialog.h">
+      <Filter>Windows</Filter>
+    </QtMoc>
+    <QtMoc Include="Windows\RenameSandboxDialog.h">
       <Filter>Windows</Filter>
     </QtMoc>
     <QtMoc Include="Helpers\IniHighlighter.h">
@@ -469,6 +483,9 @@
     <QtUic Include="Forms\ExtractDialog.ui">
       <Filter>Form Files</Filter>
     </QtUic>
+    <QtUic Include="Forms\RenameSandboxDialog.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
     <QtUic Include="Forms\EditorSettingsWindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
@@ -478,6 +495,9 @@
       <Filter>Translation Files</Filter>
     </None>
     <None Include="sandman_fr.ts">
+      <Filter>Translation Files</Filter>
+    </None>
+    <None Include="sandman_hi.ts">
       <Filter>Translation Files</Filter>
     </None>
     <None Include="sandman_pt_BR.ts">
